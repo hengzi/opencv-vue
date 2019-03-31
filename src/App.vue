@@ -15,14 +15,14 @@
 </template>
 
 <script>
-import Stats from "stats.js";
-import getUserMedia from "getusermedia";
+import Stats from 'stats.js'
+import getUserMedia from 'getusermedia'
 
-const publicPath = process.env.BASE_URL;
-let cv = null;
+const publicPath = process.env.BASE_URL
+let cv = null
 
 export default {
-  name: "app",
+  name: 'app',
   data() {
     return {
       videoWidth: 1920,
@@ -35,7 +35,7 @@ export default {
       videoCap: null,
       faceVect: null,
       processTimer: null
-    };
+    }
   },
   methods: {
     startCamera() {
@@ -43,7 +43,7 @@ export default {
         audio: false,
         video: {
           width: {
-            facingMode: "user",
+            facingMode: 'user',
             min: 960,
             ideal: 1280,
             max: 1920
@@ -54,159 +54,159 @@ export default {
             max: 1080
           }
         }
-      };
+      }
       getUserMedia(constraints, (err, s) => {
         if (err) {
-          console.warn("getUserMedia failed", err);
-          return;
+          console.warn('getUserMedia failed', err)
+          return
         }
-        console.log("startCamera");
-        this.stream = s;
-        this.$refs.videoSrc.srcObject = s;
-        this.$refs.videoSrc.play();
-      });
+        console.log('startCamera')
+        this.stream = s
+        this.$refs.videoSrc.srcObject = s
+        this.$refs.videoSrc.play()
+      })
     },
     stopCamera() {
-      console.log("stopCamera");
-      if (!this.stream) return;
-      this.stopVideoProcessing();
-      this.$refs.videoSrc.pause();
-      this.$refs.videoSrc.srcObject = null;
-      this.stream.getVideoTracks()[0].stop();
-      this.stream = null;
+      console.log('stopCamera')
+      if (!this.stream) return
+      this.stopVideoProcessing()
+      this.$refs.videoSrc.pause()
+      this.$refs.videoSrc.srcObject = null
+      this.stream.getVideoTracks()[0].stop()
+      this.stream = null
     },
     onSourceReady() {
-      this.videoWidth = this.$refs.videoSrc.videoWidth;
-      this.videoHeight = this.$refs.videoSrc.videoHeight;
-      console.log("onSourceReady:", this.videoWidth, this.videoHeight);
+      this.videoWidth = this.$refs.videoSrc.videoWidth
+      this.videoHeight = this.$refs.videoSrc.videoHeight
+      console.log('onSourceReady:', this.videoWidth, this.videoHeight)
       if (window.Module) {
-        cv = window.Module;
-        this.startVideoProcessing();
+        cv = window.Module
+        this.startVideoProcessing()
       } else {
-        this.loadOpenCv();
+        this.loadOpenCv()
       }
     },
     initStats() {
-      this.stats = new Stats();
-      this.stats.showPanel(0);
-      this.$refs.app.appendChild(this.stats.dom);
+      this.stats = new Stats()
+      this.stats.showPanel(0)
+      this.$refs.app.appendChild(this.stats.dom)
     },
     loadOpenCv() {
       if (!window.WebAssembly) {
-        console.warn("Your web browser doesn't support WebAssembly.");
-        return;
+        console.warn("Your web browser doesn't support WebAssembly.")
+        return
       }
-      const script = document.createElement("script");
-      script.type = "text/javascript";
-      script.async = "async";
-      script.src = `${publicPath}libs/opencv.js`;
-      document.body.appendChild(script);
+      const script = document.createElement('script')
+      script.type = 'text/javascript'
+      script.async = 'async'
+      script.src = `${publicPath}libs/opencv.js`
+      document.body.appendChild(script)
       script.onload = () => {
-        console.log("OpenCV.js is loaded");
-      };
+        console.log('OpenCV.js is loaded')
+      }
 
       window.Module = {
         wasmBinaryFile: `${publicPath}libs/opencv_js.wasm`, // for wasm mode
         preRun: () => {
-          console.log("loading haarcascade_frontalface_default.xml");
+          console.log('loading haarcascade_frontalface_default.xml')
           window.Module.FS_createPreloadedFile(
-            "/",
-            "haarcascade_frontalface",
+            '/',
+            'haarcascade_frontalface',
             `${publicPath}data/haarcascade_frontalface_default.xml`,
             true,
             false
-          );
+          )
         },
         _main: () => {
-          console.log("OpenCV.js is ready");
-          cv = window.cv;
+          console.log('OpenCV.js is ready')
+          cv = window.cv
           // console.log(cv.getBuildInformation());
-          this.startVideoProcessing();
+          this.startVideoProcessing()
         }
-      };
+      }
     },
 
     startVideoProcessing() {
       if (!this.stream) {
-        console.warn("Please startup your webcam.");
-        return;
+        console.warn('Please startup your webcam.')
+        return
       }
-      this.canvasCtx = this.$refs.canvas.getContext("2d");
-      this.faceClassifier = new cv.CascadeClassifier();
-      this.faceClassifier.load("haarcascade_frontalface");
-      this.srcMat = new cv.Mat(this.videoHeight, this.videoWidth, cv.CV_8UC4);
-      this.detectMat = new cv.Mat();
-      this.videoCap = new cv.VideoCapture(this.$refs.videoSrc);
-      this.faceVect = new cv.RectVector();
-      this.initStats();
-      this.processTimer = requestAnimationFrame(this.processVideo);
+      this.canvasCtx = this.$refs.canvas.getContext('2d')
+      this.faceClassifier = new cv.CascadeClassifier()
+      this.faceClassifier.load('haarcascade_frontalface')
+      this.srcMat = new cv.Mat(this.videoHeight, this.videoWidth, cv.CV_8UC4)
+      this.detectMat = new cv.Mat()
+      this.videoCap = new cv.VideoCapture(this.$refs.videoSrc)
+      this.faceVect = new cv.RectVector()
+      this.initStats()
+      this.processTimer = requestAnimationFrame(this.processVideo)
     },
 
     stopVideoProcessing() {
-      console.log("stopVideoProcessing");
-      cancelAnimationFrame(this.processTimer);
-      this.stats.end();
+      console.log('stopVideoProcessing')
+      cancelAnimationFrame(this.processTimer)
+      this.stats.end()
       if (this.faceClassifier && !this.faceClassifier.isDeleted()) {
-        this.faceClassifier.delete();
+        this.faceClassifier.delete()
       }
-      this.srcMat.delete();
-      this.detectMat.delete();
-      this.faceVect.delete();
-      this.canvasCtx.clearRect(0, 0, this.videoWidth, this.videoHeight);
+      this.srcMat.delete()
+      this.detectMat.delete()
+      this.faceVect.delete()
+      this.canvasCtx.clearRect(0, 0, this.videoWidth, this.videoHeight)
     },
 
     processVideo() {
       if (!this.$refs.videoSrc) {
-        console.warn("Video stream not found.");
-        return;
+        console.warn('Video stream not found.')
+        return
       }
-      this.stats.begin();
-      this.videoCap.read(this.srcMat);
-      cv.cvtColor(this.srcMat, this.detectMat, cv.COLOR_RGBA2GRAY, 0);
-      cv.pyrDown(this.detectMat, this.detectMat);
-      cv.pyrDown(this.detectMat, this.detectMat);
+      this.stats.begin()
+      this.videoCap.read(this.srcMat)
+      cv.cvtColor(this.srcMat, this.detectMat, cv.COLOR_RGBA2GRAY, 0)
+      cv.pyrDown(this.detectMat, this.detectMat)
+      cv.pyrDown(this.detectMat, this.detectMat)
       this.faceClassifier.detectMultiScale(
         this.detectMat,
         this.faceVect,
         1.1,
         3,
         0
-      );
-      this.drawFace();
-      this.stats.end();
-      this.processTimer = requestAnimationFrame(this.processVideo);
+      )
+      this.drawFace()
+      this.stats.end()
+      this.processTimer = requestAnimationFrame(this.processVideo)
     },
-    
+
     drawFace() {
-      this.canvasCtx.clearRect(0, 0, this.videoWidth, this.videoHeight);
-      console.log(this.faceVect.size());
+      this.canvasCtx.clearRect(0, 0, this.videoWidth, this.videoHeight)
+      console.log(this.faceVect.size())
       for (let i = 0; i < this.faceVect.size(); ++i) {
-        const rect = this.faceVect.get(i);
+        const rect = this.faceVect.get(i)
         if (rect.width > 0 && rect.height > 0) {
-          this.canvasCtx.lineWidth = 2;
-          this.canvasCtx.strokeStyle = "red";
+          this.canvasCtx.lineWidth = 2
+          this.canvasCtx.strokeStyle = 'red'
           this.canvasCtx.strokeRect(
             rect.x * 4,
             rect.y * 4,
             rect.width * 4,
             rect.height * 4
-          );
+          )
         }
       }
     }
   },
   mounted() {
-    this.startCamera();
+    this.startCamera()
   },
   beforeDestroy() {
-    this.stopCamera();
+    this.stopCamera()
   }
-};
+}
 </script>
 
 <style lang="less">
 #app {
-  font-family: "Avenir", Helvetica, Arial, sans-serif;
+  font-family: 'Avenir', Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
@@ -222,7 +222,7 @@ export default {
 }
 .webcam {
   position: relative;
-  width: 80vw;
+  width: 100%;
   transform: rotateY(180deg);
   &-video {
     display: block;

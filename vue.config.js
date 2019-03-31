@@ -1,4 +1,4 @@
 module.exports = {
-  baseUrl: process.env.NODE_ENV === 'production' ? '/opencv-vue/' : '/',
+  publicPath: process.env.NODE_ENV === 'production' ? '/opencv-vue/' : '/',
   outputDir: 'docs'
 }
