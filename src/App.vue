@@ -11,6 +11,7 @@
       >Your browser does not support this application.</video>
       <canvas ref="canvas" class="webcam-canvas" :width="videoWidth" :height="videoHeight"></canvas>
     </div>
+    <p class="msg">{{msg}}</p>
   </div>
 </template>
 
@@ -34,7 +35,8 @@ export default {
       detectMat: null,
       videoCap: null,
       faceVect: null,
-      processTimer: null
+      processTimer: null,
+      msg: ''
     }
   },
   methods: {
@@ -57,18 +59,19 @@ export default {
       }
       getUserMedia(constraints, (err, s) => {
         if (err) {
-          console.warn('getUserMedia failed', err)
+          this.setMsg('getUserMedia failed', 'warn')
+          console.warn(err)
           return
         }
-        console.log('startCamera')
+        this.setMsg('getUserMedia success')
         this.stream = s
         this.$refs.videoSrc.srcObject = s
         this.$refs.videoSrc.play()
       })
     },
     stopCamera() {
-      console.log('stopCamera')
       if (!this.stream) return
+      this.setMsg('stopCamera')
       this.stopVideoProcessing()
       this.$refs.videoSrc.pause()
       this.$refs.videoSrc.srcObject = null
@@ -76,9 +79,10 @@ export default {
       this.stream = null
     },
     onSourceReady() {
+      this.setMsg('onSourceReady.')
       this.videoWidth = this.$refs.videoSrc.videoWidth
       this.videoHeight = this.$refs.videoSrc.videoHeight
-      console.log('onSourceReady:', this.videoWidth, this.videoHeight)
+      console.log(this.videoWidth, this.videoHeight)
       if (window.Module) {
         cv = window.Module
         this.startVideoProcessing()
@@ -93,22 +97,23 @@ export default {
     },
     loadOpenCv() {
       if (!window.WebAssembly) {
-        console.warn("Your web browser doesn't support WebAssembly.")
+        this.setMsg("Your web browser doesn't support WebAssembly.", 'warn')
         return
       }
+      this.setMsg('loading OpenCv.js')
       const script = document.createElement('script')
       script.type = 'text/javascript'
       script.async = 'async'
       script.src = `${publicPath}libs/opencv.js`
       document.body.appendChild(script)
       script.onload = () => {
-        console.log('OpenCV.js is loaded')
+        this.setMsg('OpenCV.js is loaded.')
       }
 
       window.Module = {
         wasmBinaryFile: `${publicPath}libs/opencv_js.wasm`, // for wasm mode
         preRun: () => {
-          console.log('loading haarcascade_frontalface_default.xml')
+          this.setMsg('loading haarcascade_frontalface_default.xml')
           window.Module.FS_createPreloadedFile(
             '/',
             'haarcascade_frontalface',
@@ -118,17 +123,19 @@ export default {
           )
         },
         _main: () => {
-          console.log('OpenCV.js is ready')
+          this.setMsg('OpenCV.js is ready.')
           cv = window.cv
-          // console.log(cv.getBuildInformation());
+          // console.log(cv.getBuildInformation())
           this.startVideoProcessing()
         }
       }
     },
 
     startVideoProcessing() {
+      this.setMsg('startVideoProcessing.')
+
       if (!this.stream) {
-        console.warn('Please startup your webcam.')
+        this.setMsg('Please startup your webcam.', 'warn')
         return
       }
       this.canvasCtx = this.$refs.canvas.getContext('2d')
@@ -143,7 +150,6 @@ export default {
     },
 
     stopVideoProcessing() {
-      console.log('stopVideoProcessing')
       cancelAnimationFrame(this.processTimer)
       this.stats.end()
       if (this.faceClassifier && !this.faceClassifier.isDeleted()) {
@@ -157,7 +163,7 @@ export default {
 
     processVideo() {
       if (!this.$refs.videoSrc) {
-        console.warn('Video stream not found.')
+        this.setMsg('Video stream not found.', 'warn')
         return
       }
       this.stats.begin()
@@ -179,7 +185,6 @@ export default {
 
     drawFace() {
       this.canvasCtx.clearRect(0, 0, this.videoWidth, this.videoHeight)
-      console.log(this.faceVect.size())
       for (let i = 0; i < this.faceVect.size(); ++i) {
         const rect = this.faceVect.get(i)
         if (rect.width > 0 && rect.height > 0) {
@@ -193,6 +198,10 @@ export default {
           )
         }
       }
+    },
+    setMsg(msg, type = 'log') {
+      this.msg = msg
+      console[type](msg)
     }
   },
   mounted() {
@@ -235,5 +244,14 @@ export default {
     left: 0;
     width: 100%;
   }
+}
+.msg {
+  position: fixed;
+  top: 0;
+  right: 0;
+  padding: 10px;
+  text-align: right;
+  background: rgba(255, 255, 255, 0.3);
+  font-size: 20px;
 }
 </style>
